@@ -36,6 +36,7 @@ class _RandomWordsState extends State<RandomWords> {
   // Maintains state for the RandomWords widget
 
   final _suggestions = <WordPair>[];
+  final _saved = Set<WordPair>();
   final _biggerFont = TextStyle(fontSize: 18.0);
 
   @override
@@ -43,8 +44,41 @@ class _RandomWordsState extends State<RandomWords> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Startup Name Generator'),
+        actions: [
+          IconButton(icon: Icon(Icons.list), onPressed: _pushSaved),
+        ],
       ),
       body: _buildSuggestions(),
+    );
+  }
+
+  void _pushSaved() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) {
+          final tiles = _saved.map(
+            (WordPair pair) {
+              return ListTile(
+                title: Text(
+                  pair.asPascalCase,
+                  style: _biggerFont,
+                ),
+              );
+            },
+          );
+          final divided =
+              ListTile.divideTiles(tiles: tiles, context: context).toList();
+          return Scaffold(
+            appBar: AppBar(
+              title: Text('Saved suggestions'),
+            ),
+            // TODO: How can I get the same padding as used on main page?
+            body: ListView(
+              children: divided,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -58,16 +92,70 @@ class _RandomWordsState extends State<RandomWords> {
           if (index >= _suggestions.length) {
             _suggestions.addAll(generateWordPairs().take(10));
           }
-          return _buildRow(_suggestions[index]);
+          return _buildRowWithAnimation(_suggestions[index]);
         });
   }
 
   Widget _buildRow(WordPair pair) {
+    final alreadySaved = _saved.contains(pair);
     return ListTile(
       title: Text(
         pair.asPascalCase,
         style: _biggerFont,
       ),
+      trailing: Icon(
+        alreadySaved ? Icons.favorite : Icons.favorite_border,
+        color: alreadySaved ? Colors.red : null,
+      ),
+      onTap: () {
+        // setState triggers a call to the build() method for the State object,
+        // resulting in an update to the UI.
+        setState(() {
+          if (alreadySaved) {
+            _saved.remove(pair);
+          } else {
+            _saved.add(pair);
+          }
+        });
+      },
+    );
+  }
+
+  // Added custom animation for favorite icon,
+  // in which one state will slowly transition into the other state
+  Widget _buildRowWithAnimation(WordPair pair) {
+    final alreadySaved = _saved.contains(pair);
+    return ListTile(
+      title: Text(
+        pair.asPascalCase,
+        style: _biggerFont,
+      ),
+      trailing: AnimatedCrossFade(
+        crossFadeState:
+            alreadySaved ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+        duration: const Duration(milliseconds: 800),
+        firstChild: Icon(
+          Icons.favorite,
+          color: Colors.red,
+        ),
+        secondChild: Icon(
+          Icons.favorite_border,
+          color: null,
+        ),
+        firstCurve: Curves.bounceOut,
+        secondCurve: Curves.bounceIn,
+      ),
+      onTap: () {
+        // setState triggers a call to the build() method for the State object,
+        // resulting in an update to the UI.
+        setState(() {
+          if (alreadySaved) {
+            _saved.remove(pair);
+          } else {
+            _saved.add(pair);
+          }
+        });
+      },
     );
   }
 }
